@@ -11,7 +11,7 @@ build_and_test:
   stage: build
   image: docker:latest
   services:
-    - docker:bind
+    - docker:dind
   script:
     - docker-compose build
     - docker-compose up -d

@@ -17,6 +17,7 @@ jobs:
       run: |
         docker compose build
         docker compose up -d
+        docker compose ps
         sleep 60
         docker compose exec -T service-api curl -f http://localhost:5000/health || exit 1
         docker compose exec -T service-catalog curl -f http://localhost:5000/health || exit 1

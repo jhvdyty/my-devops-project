@@ -12,6 +12,8 @@ defore_script:
   - dotnet --version
   - nuget help | select-string Version
 
-dummy job:
+dummy job on windows:
   script:
     - echo ok
+  tags:
+    - windows

@@ -7,13 +7,39 @@ variables:
   DOCKER_DRIVER: overlay2
   DOCKER_TLS_CERTDIR: "/certs"
 
-defore_script:
-  - $PSVersionTable.PSVersion
-  - dotnet --version
-  - nuget help | select-string Version
-
-dummy job on windows:
+build_and_test:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:bind
   script:
-    - echo ok
-  tags:
-    - windows
+    - docker-compose build
+    - docker-compose up -d
+    - sleep 30
+    - docker-compose exec -T service-api curl -f http://localhost:5000/health || exit 1
+    - docker-compose exec -T service-catalog curl -f http://localhost:5000/health || exit 1
+    - docker-compose down
+  only:
+    - main
+  
+deploy_production:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache openssh-client docker-compose
+    - eval $(ssh-agent -s)
+    - echo "$PRODUCTION_SSH_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan -H $PRODUCTION_HOST >> ~/.ssh/known_hosts
+  script:
+    - scp -r . $PRODUCTION_USER@$PRODUCTION_HOST:~/app/
+    - ssh $PRODUCTION_USER@$PRODUCTION_HOST "cd ~/app && docker-compose down && docker-compose up -d"
+    - sleep 30
+    - ssh $PRODUCTION_USER@$PRODUCTION_HOST "cd ~/app && docker-compose exec -T service-api curl -f http://localhost:5000/health"
+  environment:
+    name: production
+    url: http://$PRODUCTION_HOST
+  when: manual
+  only:
+    - main

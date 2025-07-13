@@ -7,11 +7,6 @@ variables:
   DOCKER_DRIVER: overlay2
   DOCKER_TLS_CERTDIR: "/certs"
 
-defore_script:
-  - $PSVersionTable.PSVersion
-  - dotnet --version
-  - nuget help | select-string Version
-
 dummy job on windows:
   script:
     - echo ok

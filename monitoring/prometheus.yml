@@ -1,0 +1,23 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['prometheus:9090']  # Изменено с localhost на prometheus
+
+  - job_name: 'service-api'
+    static_configs:
+      - targets: ['service-api:5000']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  - job_name: 'service-catalog'
+    static_configs:
+      - targets: ['service-catalog:5000']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  # Убрали postgres, redis, nginx так как они не предоставляют метрики Prometheus
+  # Если нужны метрики от них, добавьте соответствующие exporters

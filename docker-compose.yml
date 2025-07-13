@@ -1,13 +1,12 @@
 # version: '3.8'
 
-
 services:
 
 # Service API
   service-api:
     build:
       context: ./app/service-api
-      dockerfile: dockerfile
+      dockerfile: Dockerfile
     container_name: service-api
     ports:
       - "5000:5000"
@@ -24,11 +23,11 @@ services:
     networks:
       - microservices
       
-    # Service Catalog
+# Service Catalog
   service-catalog:
     build:
       context: ./app/service-catalog
-      dockerfile: dockerfile
+      dockerfile: Dockerfile
     container_name: service-catalog
     ports:
       - "5001:5000"
@@ -51,23 +50,18 @@ services:
     image: postgres:16.0
     container_name: postgres
     environment:
-      POSTGRES_DB=microservices_db
-      POSTGRES_USER=postgres
-      POSTGRES_PASSWORD=password
+      - POSTGRES_DB=microservices_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
     ports:
       - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 10
-      timeout: 5s
-      retries: 5
     volumes:
       - postgres_data:/var/lib/postgresql/data 
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - microservices
 
-      # Redis for caching
+# Redis for caching
   redis:
     image: redis:7-alpine
     container_name: redis
@@ -78,7 +72,7 @@ services:
     networks:
       - microservices
   
-   # Nginx as reverse proxy
+# Nginx as reverse proxy
   nginx:
     image: nginx:alpine
     container_name: nginx
@@ -92,20 +86,19 @@ services:
     networks:
       - microservices
 
-  # Monitoring - Prometheus (optional)
+# Monitoring - Prometheus
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
     ports:
       - "9090:9090"
     volumes:
-      -./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
       - microservices
-    profiles:
-      - monitoring
+    # Убрали profiles для постоянной работы
     
-  # Monitoring - Grafana (optional)
+# Monitoring - Grafana
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
@@ -117,15 +110,12 @@ services:
       - grafana_data:/var/lib/grafana
     networks:
       - microservices
-    profiles:
-      - monitoring
-
+    # Убрали profiles для постоянной работы
 
 volumes:
   postgres_data:
   redis_data:
   grafana_data:
-
 
 networks:
   microservices:

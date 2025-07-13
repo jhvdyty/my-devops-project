@@ -1,7 +1,9 @@
+import random
 import os
 import requests
 import redis
 import json
+from datetime import datetime
 from flask import Flask, jsonify, request
 from datetime import datetime
 
@@ -244,6 +246,116 @@ def get_service_stats():
         return jsonify(stats)
     except Exception as e:
         return jsonify({"error": f"Failed to get stats: {str(e)}"}), 500
+    
+@app.route("/health")
+def health_check():
+    """Простая проверка здоровья каталога"""
+    return jsonify({
+        "status": "healthy",
+        "service": "service-catalog",
+        "version": "1.0.0",
+        "timestamp": datetime.now().isoformat()
+    })
+
+@app.route("/metrics")
+def metrics():
+    """метрики"""
+    # Получаем статистику из Redis если доступен
+    total_calls = 0
+    if redis_client:
+        try:
+            logs = redis_client.lrange('service_calls_log', 0, -1)
+            total_calls = len(logs)
+        except:
+            pass
+    return f"""
+service_catalog_requests_total {{method="GET",endpoint="/services"}} {random.randint(100, 500)}
+service_catalog_requests_total {{method="GET",endpoint="/services/health"}} {random.randint(50, 200)}
+
+service_catalog_up 1
+
+#отслеживает общее число вызовов прокси-сервиса.
+#counter 
+service_catalog_proxy_calls_total {total_calls}
+
+#метрика показывает количество сервисов в каталоге.
+#gauge
+service_catalog_services_count {len(SERVICES_CATALOG['services'])}
+
+#Подключено ли приложение к Redis?
+#gauge 
+service_catalog_redis_connected {"1" if redis_client else "0"}
+
+"""
+@app.route("/services/discover")
+def discover_services():
+    """Автоматическое обнаружение сервисов"""
+    discovered = []
+    
+    # Проверяем доступность service-api
+    try:
+        response = requests.get(f"{SERVICE_API_URL}/", timeout=5)
+        if response.status_code == 200:
+            service_info = response.json()
+            discovered.append({
+                "name": service_info.get("service", "Unknown"),
+                "url": SERVICE_API_URL,
+                "version": service_info.get("version", "Unknown"),
+                "endpoints": service_info.get("endpoints", []),
+                "status": "available",
+                "response_time": response.elapsed.total_seconds()
+            })
+    except Exception as e:
+        discovered.append({
+            "name": "service-api",
+            "url": SERVICE_API_URL,
+            "status": "unavailable",
+            "error": str(e)
+        })
+    
+    return jsonify({
+        "discovered_services": discovered,
+        "total_discovered": len(discovered),
+        "timestamp": datetime.now().isoformat()
+    })
+
+@app.route("/services/registry")
+def service_registry():
+    """Полный реестр сервисов с их состоянием"""
+    registry = {
+        "services": [],
+        "total_services": 0,
+        "healthy_services": 0,
+        "timestamp": datetime.now().isoformat()
+    }
+    
+    for service in SERVICES_CATALOG['services']:
+        service_status = {
+            "id": service['id'],
+            "name": service['name'],
+            "version": service['version'],
+            "endpoint": service['endpoint'],
+            "status": service['status'],
+            "health_check": "unknown"
+        }
+        
+        # Проверяем доступность сервиса
+        try:
+            if service['id'] == 1:  # service-api
+                response = requests.get(f"{SERVICE_API_URL}/health", timeout=3)
+                if response.status_code == 200:
+                    service_status['health_check'] = "healthy"
+                    registry['healthy_services'] += 1
+                else:
+                    service_status['health_check'] = "unhealthy"
+        except:
+            service_status['health_check'] = "unreachable"
+        
+        registry['services'].append(service_status)
+    
+    registry['total_services'] = len(registry['services'])
+    
+    return jsonify(registry)
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))

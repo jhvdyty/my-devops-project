@@ -15,12 +15,12 @@ jobs:
       
     - name: Build and test services
       run: |
-        docker-compose build
-        docker-compose up -d
+        docker compose build
+        docker compose up -d
         sleep 30
         
         # Проверяем health endpoints с хоста
         curl -f http://localhost:5000/health || exit 1
         curl -f http://localhost:5001/health || exit 1
         
-        docker-compose down
+        docker compose down

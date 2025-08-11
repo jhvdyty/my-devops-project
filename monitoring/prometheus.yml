@@ -20,4 +20,4 @@ scrape_configs:
     scrape_interval: 5s
 
   # Убрали postgres, redis, nginx так как они не предоставляют метрики Prometheus
-  # Если нужны метрики от них, добавьте соответствующие exporters
+  # Если нужны метрики от них
